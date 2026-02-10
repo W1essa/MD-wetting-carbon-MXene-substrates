@@ -1,0 +1,41 @@
+# ======================================================
+# --- DENSITY CALCULATION (RERUN MODE) ---
+# --- FIXED: Styles defined BEFORE reading data ---
+# ======================================================
+units           metal
+atom_style      full
+boundary        p p f
+
+# !!! ВАЖЛИВО: Стилі мають бути ДО read_data !!!
+bond_style      harmonic
+angle_style     harmonic
+
+# Тепер можна читати файл, бо LAMMPS вже знає стилі
+read_data       /home/vbarv/projects/lammps/data/merged_aligned.data
+
+# 2. Групи
+group           water    type 1 2
+group           graphene type 3 4
+
+# ======================================================
+# --- НАЛАШТУВАННЯ СІТКИ (GRID) ---
+# ======================================================
+# Біни 0.5x0.5 Ангстрема
+compute         myGrid water chunk/atom bin/2d x lower 0.5 z lower 0.5
+
+# ======================================================
+# --- НАЛАШТУВАННЯ УСЕРЕДНЕННЯ ---
+# ======================================================
+# 1. Налаштування усереднення
+# Nrepeat=1 -> просто беремо поточний кадр
+# Nfreq=100000 -> записуємо результат в кінці
+fix fProfile water ave/chunk 1 1 1000 myGrid density/mass file /home/vbarv/projects/lammps/data/density_final.dat
+# ======================================================
+# --- ЗАПУСК RERUN (ТІЛЬКИ ОСТАННІ КАДРИ) ---
+# ======================================================
+print "--- STARTING RERUN ANALYSIS (LAST FRAMES ONLY) ---"
+
+# ДОДАНО: "first 280000"
+# Це змусить LAMMPS ігнорувати все, що було до кроку 280 000.
+# Правильний порядок: спочатку "first 280000", а потім "dump x y z..."
+rerun           /home/vbarv/projects/lammps/data/production_part2.dump first 280000 dump x y z box yes replace yes

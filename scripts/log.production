@@ -1,8 +1,0 @@
-
-read_data       /home/vanes/lammps-course/data/merged_aligned.data
-Reading data file ...
-WARNING: Inconsistent units in data file: current = real, data file = metal (src/read_data.cpp:1162)
-  orthogonal box = (-40.134002 -6.8836823 -40.134002) to (243.16743 390.28735 150)
-  1 by 5 by 1 MPI processor grid
-ERROR: Must define bond_style before Bond Coeffs (src/read_data.cpp:720)
-Last command: read_data       /home/vanes/lammps-course/data/merged_aligned.data

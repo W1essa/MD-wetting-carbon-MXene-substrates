@@ -1,4 +1,0 @@
-LAMMPS (2 Apr 2025 - Development - patch_2Apr2025-125-g7ca493917a-modified)
-package omp 4
-ERROR: Package omp command without OPENMP package installed (../input.cpp:1722)
-Last input line: package omp 4

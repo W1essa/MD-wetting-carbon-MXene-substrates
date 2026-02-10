@@ -117,27 +117,5 @@ dump            dProd all custom 2000 /mnt/c/Users/vbarv/Desktop/vns/course/proj
 run             300000
 
 # Save final state
-write_data      /mnt/c/Users/vbarv/Desktop/vns/course/project/lammps/data/final_equilibrated.data
+write_data      /mnt/c/Users/vbarv/Desktop/vns/course/project/lammps/data/equilibrated_system.data
 print "DONE"
-
-# ======================================================
-# --- MEASUREMENT ---
-# ======================================================
-print "--- ACTION: Measuring Density Profile ---"
-
-# 1. Stop trajectory recording from equilibration
-undump          dProd
-
-# 2. Reset clock for clean plotting data
-reset_timestep  0
-
-# 3. Define 2D Grid for Density Profile (0.5 x 0.5 Angstrom bins)
-compute         myGrid water chunk/atom bin/2d x lower 0.5 z lower 0.5
-
-# 4. Average density data
-fix             fProfile water ave/chunk 100 500 50000 myGrid density/mass file /mnt/c/Users/vbarv/Desktop/vns/course/project/lammps/data/density_final.dat
-
-# 5. Run measurement
-run             100000
-
-print "ALL DONE SUCCESS"
