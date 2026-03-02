@@ -12,6 +12,30 @@ __pycache__/
 *.ipynb_checkpoints
 
 # Virtual environments & configs
-.venv/
+venv/
+__pycache__/
+*.so
+build/
 .env/
 .vscode/
+
+# Documents
+*.pdf
+*.docx
+*.doc
+
+# System artifacts
+*:Zone.Identifier
+*Zone.Identifier*
+
+# Simulation Outputs (Keep on disk, ignore in Git)
+failed_*.data
+equilibrated_*.data
+merged_*.data
+*restart*
+*.dump
+
+
+# Simulation images and plots
+*.png
+*.jpg
