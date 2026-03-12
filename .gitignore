@@ -18,6 +18,7 @@ __pycache__/
 build/
 .env/
 .vscode/
+packmol-21.0.1/
 
 # Documents
 *.pdf
