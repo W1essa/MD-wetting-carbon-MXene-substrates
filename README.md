@@ -28,27 +28,24 @@ source venv/bin/activate
 pip install -r requirements.txt
 ```
 ## Project Structure
-
-This repository is organized into three main components:
-- **`scripts/`**: Contains all logic. This includes LAMMPS input scripts (`.in`), Python helper tools (`.py`), and Jupyter notebooks (`.ipynb`) for analysis.
-- **`data/`**: Stores geometry files (`.data`) and simulation outputs, including trajectory dumps (`.lammpstrj`) and visual plots.
-- **`build/`**: Contains the compiled LAMMPS binary specific to this environment.
-
 ```text
 .
 ├── README.md
 ├── requirements.txt
-├── venv/                 # Python virtual environment
-├── build/                # Compiled LAMMPS binary
-├── scripts/              # Simulation logic & tools
-│   ├── *.in              
-│   ├── *.py              
-│   ├── *.ipynb           
-│   └── *.vars            
-├── data/                 # Geometry & Simulation results
-│   ├── *.data            
-│   ├── *.lammpstrj       
-│   ├── *.xyz             
-│   └── *.png             
-└── output/               # Placeholder for logs or additional outputs
+├── venv/                  # Python virtual environment
+├── build/                 # Compiled LAMMPS binary
+├── scripts/               # Simulation logic & tools
+│   ├── *.in
+│   ├── *.py
+│   ├── *.ipynb
+│   └── *.vars
+├── data/                  # Geometries, merged systems, processed outputs
+│   ├── *.data
+│   ├── *.xyz
+│   ├── *.png
+│   └── *.dat
+├── dump/                  # Trajectory files and raw simulation dumps
+│   ├── *.lammpstrj
+│   └── *
+└── output/                # Optional logs or additional exported results
 ```
