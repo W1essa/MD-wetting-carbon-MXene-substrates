@@ -1,9 +1,9 @@
 # ==============================================================================
-# 1. UNIVERSAL EQUILIBRATION OF SPC/E WATER ON FROZEN GRAPHENIC SUBSTRATE
+# 1. EQUILIBRATION OF SPC/E WATER ON MINIMIZED, FROZEN GRAPHENIC SUBSTRATE
 #
 # Run:
-#   lmpgpu -var geom flat    -in equilibration_graphene.in
-#   lmpgpu -var geom pillars -in equilibration_graphene.in
+#   lmpgpu -var geom flat    -in equilibration.in
+#   lmpgpu -var geom pillars -in equilibration.in
 #
 # Assumed atom types after merge:
 #   1 = O (water)
@@ -40,13 +40,13 @@ newton          off
 variable        geom index flat
 
 if "${geom} == flat" then &
-  "variable infile string ../data/merged_flat_system_with_relaxed_graphene.data" &
+  "variable infile string ../data/merged_flat_system_with_minimized_graphene.data" &
   "variable outfile string ../data/equilibrated_flat_system.data" &
   "variable dumpout string ../dump/flat_equil.lammpstrj" &
   "variable epsilonCO equal 0.1050"
 
 if "${geom} == pillars" then &
-  "variable infile string ../data/merged_pillars_system.data" &
+  "variable infile string ../data/merged_pillars_system_with_minimized_graphene.data" &
   "variable outfile string ../data/equilibrated_pillars_system.data" &
   "variable dumpout string ../dump/pillars_equil.lammpstrj" &
   "variable epsilonCO equal 0.1235"
@@ -120,7 +120,7 @@ fix             freeze substrate setforce 0.0 0.0 0.0
 
 # --- 12. Neighbor settings ---
 neighbor        2.0 bin
-neigh_modify    every 1 delay 0 check yes
+neigh_modify    every 1 delay 0 check yes one 10000
 
 # --- 13. Optional z-wall safety ---
 # Uncomment if atoms ever escape through the nonperiodic z boundary
@@ -155,7 +155,6 @@ dump            d1 all custom 2000 ${dumpout} id type x y z
 run             20000
 
 # --- 19. Stage 2: main equilibration ---
-timestep        2.0
 run             100000
 
 # --- 20. Final output ---

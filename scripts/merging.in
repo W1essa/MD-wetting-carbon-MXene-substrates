@@ -176,6 +176,7 @@ displace_atoms   Water move 0.0 0.0 ${shift_z} units box
 # --- 14. Cleanup before writing ---
 velocity         all set 0.0 0.0 0.0 units box
 reset_atoms      image Water
+reset_atoms      id
 
 # --- 15. Write merged output ---
 write_data       ${out_file} nocoeff

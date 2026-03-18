@@ -85,6 +85,11 @@ if "${geom} == flat" then &
   "group Anchor union LeftEdge RightEdge"
 
 group           Mobile subtract all Anchor
+variable        nAnchor equal count(Anchor)
+variable        nMobile equal count(Mobile)
+
+print "Anchor atoms     : ${nAnchor}"
+print "Mobile atoms     : ${nMobile}"
 
 # --- 11. Freeze anchor atoms ---
 velocity        all    set 0.0 0.0 0.0 units box
