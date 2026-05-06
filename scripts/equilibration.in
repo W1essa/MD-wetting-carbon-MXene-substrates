@@ -41,14 +41,14 @@ variable        geom index flat
 
 if "${geom} == flat" then &
   "variable infile string ../data/merged_flat_system_with_minimized_graphene.data" &
-  "variable outfile string ../data/equilibrated_flat_system.data" &
-  "variable dumpout string ../dump/flat_equil.lammpstrj" &
+  "variable outfile string ../data/equilibrated_flat_system_v2.data" &
+  "variable dumpout string ../dump/flat_equil_v2.lammpstrj" &
   "variable epsilonCO equal 0.1050"
 
 if "${geom} == pillars" then &
   "variable infile string ../data/merged_pillars_system_with_minimized_graphene.data" &
-  "variable outfile string ../data/equilibrated_pillars_system.data" &
-  "variable dumpout string ../dump/pillars_equil.lammpstrj" &
+  "variable outfile string ../data/equilibrated_pillars_system_v2.data" &
+  "variable dumpout string ../dump/pillars_equil_v2.lammpstrj" &
   "variable epsilonCO equal 0.1235"
 
 if "${geom} != flat && ${geom} != pillars" then &
@@ -155,7 +155,7 @@ dump            d1 all custom 2000 ${dumpout} id type x y z
 run             20000
 
 # --- 19. Stage 2: main equilibration ---
-run             100000
+run             500000
 
 # --- 20. Final output ---
 undump          d1

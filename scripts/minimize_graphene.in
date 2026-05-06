@@ -61,7 +61,7 @@ pair_coeff      * * /home/vanessa/lammps_src/potentials/CH.airebo C H
 
 # --- 8. Neighbor settings ---
 neighbor        2.0 bin
-neigh_modify    every 1 delay 0 check yes
+neigh_modify    every 1 delay 0 check yes one 10000
 
 # --- 9. Basic groups ---
 group           Carbon   type 1

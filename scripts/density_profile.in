@@ -1,41 +1,82 @@
-# ======================================================
-# --- DENSITY CALCULATION (RERUN MODE) ---
-# --- FIXED: Styles defined BEFORE reading data ---
-# ======================================================
-units           metal
+# ==============================================================================
+# 2D DENSITY PROFILE OF WATER DROPLET FROM TRAJECTORY
+#
+# Purpose:
+#   - build an x-z mass density map of the water droplet
+#   - use rerun on an existing trajectory
+#   - prepare data for contact-angle analysis
+#
+# Run:
+#   lmpgpu -var geom flat    -in density_profile.in
+#   lmpgpu -var geom pillars -in density_profile.in
+# ==============================================================================
+
+# --- 1. Basic setup ---
+units           real
 atom_style      full
 boundary        p p f
 
-# !!! ВАЖЛИВО: Стилі мають бути ДО read_data !!!
 bond_style      harmonic
 angle_style     harmonic
+pair_style      zero 1.0
 
-# Тепер можна читати файл, бо LAMMPS вже знає стилі
-read_data       /home/vbarv/projects/lammps/data/merged_aligned.data
+neighbor        1.0 bin
+neigh_modify    every 1 delay 0 check yes one 10000 page 200000
 
-# 2. Групи
-group           water    type 1 2
-group           graphene type 3 4
+# --- 2. Geometry selector ---
+variable        geom index flat
 
-# ======================================================
-# --- НАЛАШТУВАННЯ СІТКИ (GRID) ---
-# ======================================================
-# Біни 0.5x0.5 Ангстрема
-compute         myGrid water chunk/atom bin/2d x lower 0.5 z lower 0.5
+if "${geom} == flat" then &
+  "variable datafile string ../data/equilibrated_flat_system_v2.data" &
+  "variable dumpfile string ../dump/flat_equil_v2.lammpstrj" &
+  "variable outfile  string ../data/density_flat.dat"
 
-# ======================================================
-# --- НАЛАШТУВАННЯ УСЕРЕДНЕННЯ ---
-# ======================================================
-# 1. Налаштування усереднення
-# Nrepeat=1 -> просто беремо поточний кадр
-# Nfreq=100000 -> записуємо результат в кінці
-fix fProfile water ave/chunk 1 1 1000 myGrid density/mass file /home/vbarv/projects/lammps/data/density_final.dat
-# ======================================================
-# --- ЗАПУСК RERUN (ТІЛЬКИ ОСТАННІ КАДРИ) ---
-# ======================================================
-print "--- STARTING RERUN ANALYSIS (LAST FRAMES ONLY) ---"
+if "${geom} == pillars" then &
+  "variable datafile string ../data/equilibrated_pillars_system_v2.data" &
+  "variable dumpfile string ../dump/pillars_equil_v2.lammpstrj" &
+  "variable outfile  string ../data/density_pillars.dat"
 
-# ДОДАНО: "first 280000"
-# Це змусить LAMMPS ігнорувати все, що було до кроку 280 000.
-# Правильний порядок: спочатку "first 280000", а потім "dump x y z..."
-rerun           /home/vbarv/projects/lammps/data/production_part2.dump first 280000 dump x y z box yes replace yes
+if "${geom} != flat && ${geom} != pillars" then &
+  "print 'ERROR: geom must be flat or pillars'" &
+  "quit 1"
+
+print "=============================================="
+print "Selected geometry : ${geom}"
+print "Data file         : ${datafile}"
+print "Dump file         : ${dumpfile}"
+print "Output file       : ${outfile}"
+print "=============================================="
+
+# --- 3. Read final topology ---
+read_data       ${datafile}
+comm_modify     cutoff 3.0
+
+# --- 4. Dummy coeffs for rerun analysis ---
+pair_coeff      * *
+bond_coeff      1 1.0 1.0
+angle_coeff     1 1.0 109.47
+
+# --- 5. Groups ---
+group           Water type 1 2
+group           Substrate type 3 4
+
+# --- 6. 2D x-z grid ---
+compute         Grid Water chunk/atom bin/2d x lower 0.5 z lower 0.5 units box
+
+# --- 7. Running average over the final trajectory part ---
+variable        nevery    equal 2000
+variable        nrepeat   equal 50
+variable        firststep equal 422000
+variable        laststep  equal 520000
+variable        nfreq     equal ${laststep}
+
+fix             Profile Water ave/chunk ${nevery} ${nrepeat} ${nfreq} Grid density/mass ave one file ${outfile}
+
+print "Averaging from step ${firststep} to ${laststep}"
+
+# --- 8. Rerun trajectory ---
+rerun           ${dumpfile} first ${firststep} last ${laststep} dump x y z box yes replace yes
+
+unfix           Profile
+
+print "SUCCESS: density profile written to ${outfile}"
