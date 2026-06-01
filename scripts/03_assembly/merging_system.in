@@ -1,0 +1,194 @@
+# ==============================================================================
+# MERGE WATER + GRAPHENIC SUBSTRATE
+#
+# Purpose:
+#   Build one clean merged data file for later equilibration.
+#
+# Notes:
+#   - geometry/topology assembly only
+#   - real force-field parameters are assigned later
+#   - water is trimmed in Y to fit the substrate footprint
+#
+# Run:
+#   lmpgpu -var geom graphene            -in merging.in
+#   lmpgpu -var geom graphite            -in merging.in
+#   lmpgpu -var geom structured_graphite -in merging.in
+# ==============================================================================
+
+# --- Output folders ---
+shell           mkdir -p ../data
+shell           mkdir -p ../dump
+
+# --- Initialization ---
+units           real
+dimension       3
+boundary        p p f
+atom_style      full
+
+bond_style      harmonic
+angle_style     harmonic
+
+# Dummy pair style for safe topology-only assembly (no forces computed here)
+pair_style      zero 20.0 nocoeff
+
+# --- Box definition ---
+# build_dims.vars must define: sys_xlo sys_xhi sys_ylo sys_yhi
+include         build_dims.vars
+
+# Extra margin to prevent box growth during read_data
+variable        xy_pad equal 60.0
+
+variable        xlo_ext equal ${sys_xlo}-${xy_pad}
+variable        xhi_ext equal ${sys_xhi}+${xy_pad}
+variable        ylo_ext equal ${sys_ylo}-${xy_pad}
+variable        yhi_ext equal ${sys_yhi}+${xy_pad}
+
+variable        z_min equal -50.0
+variable        z_max equal 250.0
+
+region          main_box block ${xlo_ext} ${xhi_ext} ${ylo_ext} ${yhi_ext} ${z_min} ${z_max} units box
+
+create_box      4 main_box bond/types 1 angle/types 1 &
+                extra/bond/per/atom 2 extra/angle/per/atom 2 &
+                extra/special/per/atom 2
+
+pair_coeff      * *
+
+# --- Geometry selector ---
+variable        geom index structured_graphite
+
+if "${geom} == graphene" then &
+  "variable substrate_file string ../data/graphene_minimized.data" &
+  "variable out_file        string ../data/merged_graphene_water.data"
+
+if "${geom} == graphite" then &
+  "variable substrate_file string ../data/graphite_minimized.data" &
+  "variable out_file        string ../data/merged_graphite_water.data"
+
+if "${geom} == structured_graphite" then &
+  "variable substrate_file string ../data/structured_graphite_minimized.data" &
+  "variable out_file        string ../data/merged_structured_graphite_water.data"
+
+if "${geom} != graphene && ${geom} != graphite && ${geom} != structured_graphite" then &
+  "print 'ERROR: geom must be graphene, graphite, or structured_graphite'" &
+  "quit 1"
+
+variable        water_file string ../data/water_cylinder.data
+
+print "=============================================="
+print "Selected geometry : ${geom}"
+print "Substrate file    : ${substrate_file}"
+print "Water file        : ${water_file}"
+print "Output file       : ${out_file}"
+print "=============================================="
+
+# --- Read components ---
+# Water:    type 1 = O,  type 2 = H(water)
+# Substrate types are offset by 2:
+#           type 3 = C,  type 4 = H(graphene)
+read_data       ${water_file}     add append group Water    nocoeff
+read_data       ${substrate_file} add append offset 2 0 0 0 0 group Graphene nocoeff
+
+# --- Masses ---
+mass            1 15.9994   # O  (water)
+mass            2 1.008     # H  (water)
+mass            3 12.011    # C  (substrate)
+mass            4 1.008     # H  (substrate passivation)
+
+# --- Dummy bonded coeffs required for write_data ---
+bond_coeff      1 1.0 1.0
+angle_coeff     1 1.0 109.47
+
+# --- Initial XY centering: align both components to box centre ---
+variable bx equal 0.5*(xlo+xhi)
+variable by equal 0.5*(ylo+yhi)
+
+variable gcx equal xcm(Graphene,x)
+variable gcy equal xcm(Graphene,y)
+displace_atoms  Graphene move $(v_bx-v_gcx) $(v_by-v_gcy) 0.0 units box
+
+variable wcx equal xcm(Water,x)
+variable wcy equal xcm(Water,y)
+displace_atoms  Water move $(v_bx-v_wcx) $(v_by-v_wcy) 0.0 units box
+
+# --- Trim water in Y to the substrate footprint ---
+# Whole water molecules are removed if any atom falls outside the allowed Y slab.
+# y_margin shrinks the allowed slab slightly to avoid water atoms sitting exactly
+# on the graphene edge where forces are poorly defined.
+variable        y_margin equal 2.0
+
+variable        gymin0 equal bound(Graphene,ymin)
+variable        gymax0 equal bound(Graphene,ymax)
+
+region          keep_y block INF INF $(v_gymin0+v_y_margin) $(v_gymax0-v_y_margin) INF INF units box
+group           keepY region keep_y
+group           dropY subtract Water keepY
+delete_atoms    group dropY mol yes
+
+# Refresh Water group after deletion
+group           Water clear
+group           Water type 1 2
+
+# --- Re-center water to substrate after trimming ---
+variable        gcx2 equal xcm(Graphene,x)
+variable        gcy2 equal xcm(Graphene,y)
+variable        wcx2 equal xcm(Water,x)
+variable        wcy2 equal xcm(Water,y)
+
+displace_atoms  Water move $(v_gcx2-v_wcx2) $(v_gcy2-v_wcy2) 0.0 units box
+
+# --- Footprint check: water must not exceed substrate in XY ---
+variable        gxmin equal bound(Graphene,xmin)
+variable        gxmax equal bound(Graphene,xmax)
+variable        gymin equal bound(Graphene,ymin)
+variable        gymax equal bound(Graphene,ymax)
+
+variable        wxmin equal bound(Water,xmin)
+variable        wxmax equal bound(Water,xmax)
+variable        wymin equal bound(Water,ymin)
+variable        wymax equal bound(Water,ymax)
+
+variable        gLx equal v_gxmax-v_gxmin
+variable        gLy equal v_gymax-v_gymin
+variable        wLx equal v_wxmax-v_wxmin
+variable        wLy equal v_wymax-v_wymin
+
+# Positive values mean water extends beyond the substrate edge — bad
+variable        over_x_lo equal v_gxmin-v_wxmin
+variable        over_x_hi equal v_wxmax-v_gxmax
+variable        over_y_lo equal v_gymin-v_wymin
+variable        over_y_hi equal v_wymax-v_gymax
+
+print "--------------- FOOTPRINT CHECK ---------------"
+print "Substrate X range : ${gxmin} to ${gxmax}  (Lx = ${gLx})"
+print "Substrate Y range : ${gymin} to ${gymax}  (Ly = ${gLy})"
+print "Water     X range : ${wxmin} to ${wxmax}  (Lx = ${wLx})"
+print "Water     Y range : ${wymin} to ${wymax}  (Ly = ${wLy})"
+print "Water overhang X- : ${over_x_lo}"
+print "Water overhang X+ : ${over_x_hi}"
+print "Water overhang Y- : ${over_y_lo}"
+print "Water overhang Y+ : ${over_y_hi}"
+print "-----------------------------------------------"
+
+if "${over_x_lo} > 0.0 || ${over_x_hi} > 0.0 || ${over_y_lo} > 0.0 || ${over_y_hi} > 0.0" then &
+  "print 'ERROR: water footprint exceeds substrate footprint after trimming'" &
+  "quit 1"
+
+# --- Stack water above substrate in Z ---
+# gap = minimum distance between top of substrate and bottom of water
+variable        g_top    equal bound(Graphene,zmax)
+variable        w_bottom equal bound(Water,zmin)
+variable        gap      equal 3.0
+variable        shift_z  equal v_g_top-v_w_bottom+v_gap
+
+displace_atoms  Water move 0.0 0.0 ${shift_z} units box
+
+# --- Final cleanup before writing ---
+velocity        all set 0.0 0.0 0.0 units box
+reset_atoms     image Water
+reset_atoms     id
+
+# --- Write merged output ---
+write_data      ${out_file} nocoeff
+
+print "SUCCESS: merged file written → ${out_file}"

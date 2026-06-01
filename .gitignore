@@ -40,3 +40,6 @@ merged_*.data
 # Simulation images and plots
 *.png
 *.jpg
+# Generated density profiles
+data/density_flat.dat
+data/density_pillars.dat

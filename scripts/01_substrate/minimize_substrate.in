@@ -1,0 +1,119 @@
+# ==============================================================================
+# MINIMIZATION OF PASSIVATED GRAPHENIC SUBSTRATE
+#
+# Works for:
+#   - graphene            : passivated monolayer graphene flake
+#   - graphite            : passivated graphite slab
+#   - structured_graphite : passivated graphite pillars
+#
+# Run:
+#   lmpgpu -var geom graphene            -in minimize.in
+#   lmpgpu -var geom graphite            -in minimize.in
+#   lmpgpu -var geom structured_graphite -in minimize.in
+# ==============================================================================
+
+shell           mkdir -p ../data
+shell           mkdir -p ../dump
+
+# --- Initialization ---
+units           metal
+dimension       3
+boundary        f f f          # finite flake — no periodic images
+atom_style      full
+newton          on
+
+# --- Geometry selector ---
+variable        geom index structured_graphite
+
+if "${geom} == graphene" then &
+  "variable infile  string ../data/graphene_initial.data" &
+  "variable outfile string ../data/graphene_minimized.data" &
+  "variable dumpout string ../dump/graphene_minimized.dump"
+
+if "${geom} == graphite" then &
+  "variable infile  string ../data/graphite_initial.data" &
+  "variable outfile string ../data/graphite_minimized.data" &
+  "variable dumpout string ../dump/graphite_minimized.dump"
+
+if "${geom} == structured_graphite" then &
+  "variable infile  string ../data/structured_graphite_initial.data" &
+  "variable outfile string ../data/structured_graphite_minimized.data" &
+  "variable dumpout string ../dump/structured_graphite_minimized.dump"
+
+if "${geom} != graphene && ${geom} != graphite && ${geom} != structured_graphite" then &
+  "print 'ERROR: geom must be graphene, graphite, or structured_graphite'" &
+  "quit 1"
+
+print "=============================================="
+print "Selected geometry : ${geom}"
+print "Input file        : ${infile}"
+print "Output file       : ${outfile}"
+print "=============================================="
+
+# --- Read structure ---
+read_data       ${infile}
+
+# --- Atom masses ---
+mass            1 12.011
+mass            2 1.008
+
+# --- Potential ---
+# NOTE: airebo/morse gives correct interlayer spacing (~3.35 A) for graphite.
+# Plain airebo underestimates it (~3.0 A). Use airebo/morse if layers are mobile.
+pair_style      airebo/morse 3.0
+pair_coeff * * /home/vanessa/lammps_src/potentials/CH.airebo-m C H
+
+# --- Neighbor settings ---
+neighbor        2.0 bin
+neigh_modify    every 1 delay 0 check yes one 10000
+
+# --- Groups ---
+group           Carbon   type 1
+group           Hydrogen type 2
+
+# --- Anchor region (geometry-dependent) ---
+# graphene: freeze narrow strips at left and right edges
+if "${geom} == graphene" then &
+  "variable xlo equal bound(all,xmin)" &
+  "variable xhi equal bound(all,xmax)" &
+  "region left_edge  block INF $(v_xlo+2.0) INF INF INF INF units box" &
+  "region right_edge block $(v_xhi-2.0) INF INF INF INF INF units box" &
+  "group LeftEdge  region left_edge" &
+  "group RightEdge region right_edge" &
+  "group Anchor    union LeftEdge RightEdge"
+
+# graphite: freeze a thin bottom slice
+if "${geom} == graphite" then &
+  "variable zlo equal bound(all,zmin)" &
+  "region anchor block INF INF INF INF INF $(v_zlo+1.0) units box" &
+  "group Anchor region anchor"
+
+# structured_graphite: freeze the bottom base layer
+if "${geom} == structured_graphite" then &
+  "variable zlo equal bound(all,zmin)" &
+  "region anchor block INF INF INF INF INF $(v_zlo+1.0) units box" &
+  "group Anchor region anchor"
+
+group           Mobile subtract all Anchor
+
+print "Anchor atoms : $(count(Anchor))"
+print "Mobile atoms : $(count(Mobile))"
+
+# --- Freeze anchor ---
+velocity        all    set 0.0 0.0 0.0 units box
+fix             freeze Anchor setforce 0.0 0.0 0.0
+velocity        Anchor set 0.0 0.0 0.0 units box
+
+# --- Thermo output ---
+thermo          500
+thermo_style    custom step pe etotal press lx ly lz atoms
+
+# --- Minimization ---
+min_style       fire
+minimize        1.0e-6 1.0e-8 5000 50000
+
+# --- Save ---
+write_data      ${outfile} nocoeff
+write_dump      all custom ${dumpout} id type x y z
+
+print "SUCCESS: minimized structure written."

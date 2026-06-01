@@ -1,0 +1,76 @@
+# ================================================================
+# BULK WATER EQUILIBRATION
+# GOAL: Reliably equilibrate a problematic initial water structure
+# METHOD: Multi-stage relaxation with temporary disabling of SHAKE
+# ================================================================
+
+# --- Initialization & Potential ---
+units           real        # kcal/mol, Å, fs, K
+atom_style      full        # Required for molecules with bonds, angles, and charges
+boundary        p p p       # Periodic boundary conditions
+
+# Define interaction styles
+pair_style      lj/cut/coul/long 10.0 # LJ+Coulomb with Ewald, 10Å cutoff
+bond_style      harmonic    
+angle_style     harmonic    
+
+read_data       "../data/water_cube_initial.data"
+
+kspace_style    pppm 1.0e-5            # PPPM for long-range electrostatics
+neighbor        2.0 bin
+neigh_modify    delay 0 every 1 check yes
+
+
+# --- Equilibration Protocol ---
+
+# STEP 1: MINIMIZATION
+print           "--- Step 1: Energy Minimization ---"
+minimize        1.0e-7 1.0e-8 5000 50000
+thermo_style    custom step pe press temp
+thermo          1000
+
+# INITIAL RELAXATION WITHOUT SHAKE
+reset_timestep  0
+timestep        0.1  
+fix             nve_limit all nve/limit 0.01
+run             10000
+unfix           nve_limit
+
+# STEP 2: GENTLE HEATING WITH SHAKE ENABLED
+print           "--- Step 2: Gentle NVT Heating with SHAKE ---"
+reset_timestep  0
+timestep        0.5  
+velocity        all create 10.0 4928459 dist gaussian
+fix             shake all shake 0.0001 20 0 b 1 a 1 
+fix             nvt_heat all nvt temp 10.0 300.0 100.0
+run             50000 # 25 ps
+unfix           nvt_heat
+
+# STEP 3: NVT EQUILIBRATION
+print           "--- Step 3: NVT Equilibration (300K) with dt=1.0fs ---"
+timestep        1.0 
+fix             nvt_eq all nvt temp 300.0 300.0 100.0
+run             100000
+unfix           nvt_eq
+
+# *** DIAGNOSTIC STEP ***
+print           "--- DIAGNOSTICS: Checking state before NPT ---"
+thermo_style    custom step temp press vol density
+thermo          1
+run             0
+
+# STEP 4: GENTLE NPT
+print           "--- Step 4: Gentle NPT with dt=1.0fs ---"
+fix             npt_gentle all npt temp 300.0 300.0 100.0 iso 1.0 1.0 1000.0
+run             200000
+unfix           npt_gentle
+
+# STEP 5: PRODUCTION NPT
+print           "--- Step 5: Production NPT Equilibration ---"
+timestep        2.0
+fix             npt_prod all npt temp 300.0 300.0 200.0 iso 1.0 1.0 1000.0
+run             250000
+unfix           npt_prod
+
+write_data      "../data/water_equilibrated_for_droplet.data"
+print           "--- Bulk equilibration complete. ---"
