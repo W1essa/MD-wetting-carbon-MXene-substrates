@@ -36,10 +36,36 @@ merged_*.data
 *restart*
 *.dump
 
-
 # Simulation images and plots
 *.png
 *.jpg
 # Generated density profiles
 data/density_flat.dat
 data/density_pillars.dat
+
+# --- GENERATED INTERMEDIATE DATA FILES ---
+# 1. Substrate minimization outputs
+data/*_minimized.data
+
+# 2. Water generation and equilibration outputs
+data/water_cube_initial.data
+data/water_equilibrated_for_droplet*.data
+data/water_cylinder.data
+
+# 3. Merged and final equilibrated systems
+data/merged_*.data
+data/equilibrated_*.data
+
+# --- TEMPORARY VARIABLES AND LOGS ---
+scripts/build_dims.vars
+scripts/packmol_cube.inp
+scripts/packmol_cube.log
+scripts/water_cube_packed.xyz
+scripts/system_temp.data
+
+data/1try/
+data/density_*.dat
+data/graphene_flat*
+data/graphene_pillars*
+data/restart_*.data
+data/water_droplet_packed.xyz

@@ -2,9 +2,9 @@
 # 1. EQUILIBRATION OF SPC/E WATER ON MINIMIZED, FROZEN GRAPHENIC SUBSTRATE
 #
 # Run:
-#   lmpgpu -var geom graphene            -in equilibration.in
-#   lmpgpu -var geom graphite            -in equilibration.in
-#   lmpgpu -var geom structured_graphite -in equilibration.in
+#   lmpgpu -var geom graphene            -in 04_analysis/equilibration.in
+#   lmpgpu -var geom graphite            -in 04_analysis/equilibration.in
+#   lmpgpu -var geom structured_graphite -in 04_analysis/equilibration.in
 #
 # Assumed atom types after merge:
 #   1 = O (water)
@@ -74,6 +74,15 @@ print "=============================================="
 # --- 5. Read merged structure ---
 read_data       ${infile} nocoeff
 
+variable z_max equal bound(all,zmax)
+variable z_min equal bound(all,zmin)
+
+variable new_zlo equal ${z_min}-10.0
+variable new_zhi equal ${z_max}+10.0
+
+change_box all z final ${new_zlo} ${new_zhi}
+print "Box dynamically resized! New Z boundaries: ${new_zlo} to ${new_zhi}"
+
 # --- 6. Groups ---
 group           water      type 1 2
 group           substrate  type 3 4
@@ -89,9 +98,9 @@ set type 4 charge  0.0
 #   LJ cutoff = 9.0 A
 #   LJ shifted to zero at cutoff
 #   Coulomb real-space cutoff = 12.0 A
-pair_style      lj/cut/coul/long 9.0 12.0
+pair_style      lj/cut/coul/long 10.0
 pair_modify     shift yes
-kspace_style    pppm 1.0e-5
+kspace_style    pppm 1.0e-4
 kspace_modify   slab 3.0
 
 # Explicit intramolecular exclusions for bonded water topology
@@ -128,6 +137,7 @@ fix             freeze substrate setforce 0.0 0.0 0.0
 # --- 12. Neighbor settings ---
 neighbor        2.0 bin
 neigh_modify    every 1 delay 0 check yes one 10000
+#neigh_modify    exclude group substrate substrate
 
 # --- 13. Optional z-wall safety ---
 fix             zwall all wall/reflect zhi EDGE
@@ -151,20 +161,35 @@ fix             int   water nve
 # SHAKE must come after fixes that add/change forces on water
 fix             shake water shake 1.0e-4 20 0 b 1 a 1
 
-# --- 17. Output ---
-timestep        1.0
+# --- 17. General Output Settings ---
+timestep        2.0
 thermo_style    custom step c_Twater pe ke etotal pxx pyy pzz atoms
 thermo          1000
-dump            d1 all custom 2000 ${dumpout} id type x y z
 
-# --- 18. Stage 1: warmup ---
-run             20000
-
-# --- 19. Stage 2: main equilibration ---
+# ==============================================================================
+#                             PHASE 1: EQUILIBRATION
+# ==============================================================================
+# --- 18. Warmup & Equilibration ---
+dump            d_eq water custom 20000 ../dump/${geom}_equilibration.lammpstrj id type x y z
+print ">>> STARTING EQUILIBRATION (1 ns) <<<"
 run             500000
+undump          d_eq
 
-# --- 20. Final output ---
-undump          d1
+# ==============================================================================
+#                             PHASE 2: PRODUCTION
+# ==============================================================================
+# --- 19. Production Output Setup ---
+reset_timestep  0 
+dump            d_prod water custom 2000 ../dump/${geom}_production.lammpstrj id type x y z
+
+# --- 20. Main Production Run ---
+print ">>> STARTING PRODUCTION RUN (2 ns) <<<"
+run             1000000
+undump          d_prod
+
+# --- 21. Final output ---
 write_data      ${outfile} nocoeff
 
-print "SUCCESS: Equilibration finished for ${geom}"
+print "=============================================="
+print "SUCCESS: Equilibration AND Production finished for ${geom}"
+print "=============================================="

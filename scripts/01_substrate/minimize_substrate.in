@@ -7,9 +7,9 @@
 #   - structured_graphite : passivated graphite pillars
 #
 # Run:
-#   lmpgpu -var geom graphene            -in minimize.in
-#   lmpgpu -var geom graphite            -in minimize.in
-#   lmpgpu -var geom structured_graphite -in minimize.in
+#   lmpgpu -var geom graphene            -in 01_substrate/minimize.in
+#   lmpgpu -var geom graphite            -in 01_substrate/minimize.in
+#   lmpgpu -var geom structured_graphite -in 01_substrate/minimize.in
 # ==============================================================================
 
 shell           mkdir -p ../data
@@ -116,4 +116,30 @@ minimize        1.0e-6 1.0e-8 5000 50000
 write_data      ${outfile} nocoeff
 write_dump      all custom ${dumpout} id type x y z
 
+# ==============================================================================
+# Generate dimensions file (build_dims.vars) for water placement
+# ==============================================================================
+variable sys_xlo equal xlo
+variable sys_xhi equal xhi
+variable sys_ylo equal ylo
+variable sys_yhi equal yhi
+variable Lx_g    equal lx
+variable Ly_g    equal ly
+variable xmid_g  equal "(xlo + xhi) / 2.0"
+variable ymid_g  equal "(ylo + yhi) / 2.0"
+variable zmaxC   equal bound(all,zmax)
+
+print "variable sys_xlo equal ${sys_xlo}" file build_dims.vars
+print "variable sys_xhi equal ${sys_xhi}" append build_dims.vars
+print "variable sys_ylo equal ${sys_ylo}" append build_dims.vars
+print "variable sys_yhi equal ${sys_yhi}" append build_dims.vars
+print "variable Lx_g    equal ${Lx_g}" append build_dims.vars
+print "variable Ly_g    equal ${Ly_g}" append build_dims.vars
+print "variable xmid_g  equal ${xmid_g}" append build_dims.vars
+print "variable ymid_g  equal ${ymid_g}" append build_dims.vars
+print "variable zmaxC   equal ${zmaxC}" append build_dims.vars
+
+
+print "=============================================="
 print "SUCCESS: minimized structure written."
+print "=============================================="
