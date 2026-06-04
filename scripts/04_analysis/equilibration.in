@@ -83,6 +83,9 @@ variable new_zhi equal ${z_max}+10.0
 change_box all z final ${new_zlo} ${new_zhi}
 print "Box dynamically resized! New Z boundaries: ${new_zlo} to ${new_zhi}"
 
+# --- 5.1. Load center coordinates for tethering ---
+include         ./build_dims.vars
+
 # --- 6. Groups ---
 group           water      type 1 2
 group           substrate  type 3 4
@@ -157,6 +160,10 @@ velocity        water create 300.0 12345 mom yes rot yes dist gaussian
 fix             lang  water langevin 300.0 300.0 100.0 699483
 fix_modify      lang temp Twater
 fix             int   water nve
+
+# if structure is flat, water is fixed in the center to overcome glide
+if "${geom} == graphene || ${geom} == graphite" then &
+  "fix tether water spring tether 10.0 ${xmid_g} NULL NULL 0.0"
 
 # SHAKE must come after fixes that add/change forces on water
 fix             shake water shake 1.0e-4 20 0 b 1 a 1
