@@ -6,10 +6,10 @@
 #   - use rerun on an existing trajectory
 #   - prepare data for contact-angle analysis
 #
-# Run (from within scripts/04_analysis/ directory):
-#   lmpgpu -var geom graphene            -in density_profile.in
-#   lmpgpu -var geom graphite            -in density_profile.in
-#   lmpgpu -var geom structured_graphite -in density_profile.in
+# Run (from within scripts/ directory):
+#   lmpgpu -var geom graphene            -in 04_analysis/density_profile.in
+#   lmpgpu -var geom graphite            -in 04_analysis/density_profile.in
+#   lmpgpu -var geom structured_graphite -in 04_analysis/density_profile.in
 # ==============================================================================
 
 # --- 1. Basic setup ---
@@ -27,21 +27,20 @@ neigh_modify    every 1 delay 0 check yes one 10000 page 200000
 # --- 2. Geometry selector ---
 variable        geom index graphene
 
-# Шляхи ../../ використовуються, оскільки ми знаходимося в scripts/04_analysis/
 if "${geom} == graphene" then &
-  "variable datafile string ../../data/equilibrated_graphene.data" &
-  "variable dumpfile string ../../dump/graphene_equil.lammpstrj" &
-  "variable outfile  string ../../data/density_graphene.dat"
+  "variable datafile string ../data/equilibrated_graphene.data" &
+  "variable dumpfile string ../dump/graphene_production.lammpstrj" &
+  "variable outfile  string ../data/density_graphene.dat"
 
 if "${geom} == graphite" then &
-  "variable datafile string ../../data/equilibrated_graphite.data" &
-  "variable dumpfile string ../../dump/graphite_equil.lammpstrj" &
-  "variable outfile  string ../../data/density_graphite.dat"
+  "variable datafile string ../data/equilibrated_graphite.data" &
+  "variable dumpfile string ../dump/graphite_production.lammpstrj" &
+  "variable outfile  string ../data/density_graphite.dat"
 
 if "${geom} == structured_graphite" then &
-  "variable datafile string ../../data/equilibrated_structured_graphite.data" &
-  "variable dumpfile string ../../dump/structured_graphite_equil.lammpstrj" &
-  "variable outfile  string ../../data/density_structured_graphite.dat"
+  "variable datafile string ../data/equilibrated_structured_graphite.data" &
+  "variable dumpfile string ../dump/structured_graphite_production.lammpstrj" &
+  "variable outfile  string ../data/density_structured_graphite.dat"
 
 if "${geom} != graphene && ${geom} != graphite && ${geom} != structured_graphite" then &
   "print 'ERROR: geom must be graphene, graphite, or structured_graphite'" &
@@ -72,14 +71,14 @@ compute         Grid Water chunk/atom bin/2d x lower 0.5 z lower 0.5 units box
 
 # --- 7. Running average over the final trajectory part ---
 variable        nevery    equal 2000
-variable        nrepeat   equal 50
-variable        firststep equal 422000
-variable        laststep  equal 520000
-variable        nfreq     equal ${laststep}
+variable        nrepeat   equal 500
+variable        firststep equal 0
+variable        laststep  equal 1000000
+variable        nfreq     equal 1000000
 
 fix             Profile Water ave/chunk ${nevery} ${nrepeat} ${nfreq} Grid density/mass ave one file ${outfile}
 
-print "Averaging from step ${firststep} to ${laststep}"
+print "Averaging from step ${firststep} to ${laststep} (${nrepeat} frames)"
 
 # --- 8. Rerun trajectory ---
 rerun           ${dumpfile} first ${firststep} last ${laststep} dump x y z box yes replace yes

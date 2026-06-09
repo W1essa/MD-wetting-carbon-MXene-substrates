@@ -10,9 +10,9 @@
 #   - water is trimmed in Y to fit the substrate footprint
 #
 # Run:
-#   lmpgpu -var geom graphene            -in merging.in
-#   lmpgpu -var geom graphite            -in merging.in
-#   lmpgpu -var geom structured_graphite -in merging.in
+#   lmpgpu -var geom graphene            -in 03_assembly/merging_system.in
+#   lmpgpu -var geom graphite            -in 03_assembly/merging_system.in
+#   lmpgpu -var geom structured_graphite -in 03_assembly/merging_system.in
 # ==============================================================================
 
 # --- Output folders ---
